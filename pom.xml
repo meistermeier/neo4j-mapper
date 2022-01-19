@@ -12,12 +12,17 @@
     <description>Project libertad</description>
     <modules>
         <module>neo4j-mapper-api</module>
+        <module>neo4j-mapper-context</module>
+        <module>neo4j-mapper-cypher</module>
     </modules>
 
     <properties>
+        <apiguardian.version>1.1.2</apiguardian.version>
+        <jetbrains-annotations.version>23.0.0</jetbrains-annotations.version>
+        <cypher-dsl.version>2022.0.0</cypher-dsl.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <apiguardian.version>1.1.2</apiguardian.version>
+        <neo4j-driver.version>4.4.2</neo4j-driver.version>
     </properties>
 
     <dependencyManagement>
@@ -26,6 +31,27 @@
                 <groupId>org.apiguardian</groupId>
                 <artifactId>apiguardian-api</artifactId>
                 <version>${apiguardian.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.neo4j.driver</groupId>
+                <artifactId>neo4j-java-driver</artifactId>
+                <version>${neo4j-driver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains</groupId>
+                <artifactId>annotations</artifactId>
+                <version>${jetbrains-annotations.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.neo4j</groupId>
+                <artifactId>neo4j-cypher-dsl</artifactId>
+                <version>${cypher-dsl.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter-engine</artifactId>
+                <version>5.8.2</version>
+                <scope>test</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
