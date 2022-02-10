@@ -16,13 +16,24 @@
 package org.neo4j.mapper.core.mapping;
 
 import org.apiguardian.api.API;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.neo4j.mapper.core.support.Assert;
+import org.neo4j.mapper.core.schema.Id;
+import org.neo4j.mapper.core.schema.Node;
+import org.neo4j.mapper.core.support.StringUtils;
 
 import java.lang.annotation.Annotation;
-import java.util.Iterator;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author Michael J. Simons
@@ -32,125 +43,234 @@ import java.util.function.Consumer;
 @API(status = API.Status.STABLE, since = "6.0")
 public interface Neo4jPersistentEntity<T> extends NodeDescription<T> {
 
-	/**
-	 * @return An optional property pointing to a {@link java.util.Collection Collection&lt;String&gt;} containing dynamic
-	 *         "runtime managed" labels.
-	 */
-	Optional<Neo4jPersistentProperty> getDynamicLabelsProperty();
+	static Neo4jPersistentEntity<?> of(Class<?> entityClass) {
+		return new Implementation<>(entityClass);
+	}
 
-	/**
-	 * Determines if the entity is annotated with {@link org.neo4j.mapper.core.schema.RelationshipProperties}
-	 *
-	 * @return true if this is a relationship properties class, otherwise false.
-	 */
-	boolean isRelationshipPropertiesEntity();
 
-	default Neo4jPersistentProperty getRequiredIdProperty() {
-		Neo4jPersistentProperty property = this.getIdProperty();
-		if (property != null) {
-			return property;
-		} else {
-			throw new IllegalStateException(String.format("Required identifier property not found for %s!", this.getType()));
+	class Implementation<T> implements Neo4jPersistentEntity<T> {
+
+		private final Class<T> type;
+		private final String primaryLabel;
+		private final GraphPropertyDescription idProperty;
+		private final NodeDescription<?> parentNodeDescription = null;
+		private final Collection<RelationshipDescription> relationships = new HashSet<>();
+
+		public Implementation(Class<T> type) {
+			this.type = type;
+			this.primaryLabel = computePrimaryLabel(type);
+			this.idProperty = findIdProperty(type);
+		}
+
+		private GraphPropertyDescription findIdProperty(Class<?> type) {
+			List<Field> candidates = Arrays.stream(type.getDeclaredFields())
+					.filter(field -> field.isAnnotationPresent(Id.class)).toList();
+			if (candidates.size() != 1) {
+				throw new IllegalStateException("Houston we have a problem");
+			}
+
+			return GraphPropertyDescription.forField(candidates.get(0));
+		}
+
+		@Override
+		public String getPrimaryLabel() {
+			return primaryLabel;
+		}
+
+		@Nullable
+		static String computePrimaryLabel(Class<?> type) {
+
+			Node nodeAnnotation = type.getAnnotation(Node.class);
+			if ((nodeAnnotation == null || hasEmptyLabelInformation(nodeAnnotation))) {
+				return type.getSimpleName();
+			} else if (StringUtils.hasText(nodeAnnotation.primaryLabel())) {
+				return nodeAnnotation.primaryLabel();
+			} else {
+				return nodeAnnotation.labels().length > 0 ? nodeAnnotation.labels()[0] : nodeAnnotation.value()[0];
+			}
+		}
+
+		private static boolean hasEmptyLabelInformation(Node nodeAnnotation) {
+			return nodeAnnotation.labels().length < 1 && nodeAnnotation.value().length < 1 && !StringUtils.hasText(nodeAnnotation.primaryLabel());
+		}
+
+		@Override
+		public String getMostAbstractParentLabel(NodeDescription<?> mostAbstractNodeDescription) {
+			return null;
+		}
+
+		@Override
+		public List<String> getAdditionalLabels() {
+			var additionalLabels = Stream.concat(computeOwnAdditionalLabels().stream(), computeParentLabels().stream())
+					.distinct() // In case the interfaces added a duplicate of the primary label.
+					.filter(v -> !getPrimaryLabel().equals(v))
+					.collect(Collectors.toList());
+
+			return additionalLabels;
+		}
+
+		/**
+		 * The additional labels will get computed and returned by following rules:<br>
+		 * 1. If there is no {@link Node} annotation, empty {@code String} array.<br>
+		 * 2. If there is an annotation but it has no properties set, empty {@code String} array.<br>
+		 * 3a. If only {@link Node#labels()} property is set, use the all but the first one as the additional labels.<br>
+		 * 3b. If the {@link Node#primaryLabel()} property is set, use the all but the first one as the additional labels.<br>
+		 * 4. If the class has any interfaces that are explicitly annotated with {@link Node}, we take all values from them.
+		 *
+		 * @return computed additional labels of the concrete class
+		 */
+		@NotNull
+		private List<String> computeOwnAdditionalLabels() {
+			List<String> result = new ArrayList<>();
+
+			Node nodeAnnotation = this.type.getAnnotation(Node.class);
+			if (!(nodeAnnotation == null || hasEmptyLabelInformation(nodeAnnotation))) {
+				if (StringUtils.hasText(nodeAnnotation.primaryLabel())) {
+					result.addAll(Arrays.asList(nodeAnnotation.labels()));
+					result.addAll(Arrays.asList(nodeAnnotation.value()));
+				} else {
+					if (nodeAnnotation.labels().length > 0) {
+						result.addAll(Arrays.asList(Arrays.copyOfRange(nodeAnnotation.labels(), 1, nodeAnnotation.labels().length)));
+					} else {
+						result.addAll(Arrays.asList(Arrays.copyOfRange(nodeAnnotation.value(), 1, nodeAnnotation.value().length)));
+					}
+				}
+			}
+
+			// Add everything we find on _direct_ interfaces
+			// We don't traverse interfaces of interfaces
+			for (Class<?> anInterface : this.type.getInterfaces()) {
+				nodeAnnotation = anInterface.getAnnotation(Node.class);
+				if (nodeAnnotation == null) {
+					continue;
+				}
+				if (hasEmptyLabelInformation(nodeAnnotation)) {
+					result.add(anInterface.getSimpleName());
+				} else {
+					if (StringUtils.hasText(nodeAnnotation.primaryLabel())) {
+						result.add(nodeAnnotation.primaryLabel());
+					}
+					result.addAll(Arrays.asList(nodeAnnotation.labels()));
+					result.addAll(Arrays.asList(nodeAnnotation.value()));
+				}
+			}
+
+			return Collections.unmodifiableList(result);
+		}
+
+		@NotNull
+		private List<String> computeParentLabels() {
+			List<String> parentLabels = new ArrayList<>();
+			Neo4jPersistentEntity<?> parentNodeDescriptionCalculated = (Neo4jPersistentEntity<?>) parentNodeDescription;
+
+			while (parentNodeDescriptionCalculated != null) {
+				if (isExplicitlyAnnotatedAsEntity(parentNodeDescriptionCalculated)) {
+
+					parentLabels.add(parentNodeDescriptionCalculated.getPrimaryLabel());
+					parentLabels.addAll(parentNodeDescriptionCalculated.getAdditionalLabels());
+				}
+				parentNodeDescriptionCalculated = (Neo4jPersistentEntity<?>) parentNodeDescriptionCalculated.getParentNodeDescription();
+			}
+			return parentLabels;
+		}
+
+		/**
+		 * @param entity The entity to check for annotation
+		 * @return True if the type is explicitly annotated as entity and as such eligible to contribute to the list of labels
+		 * and required to be part of the label lookup.
+		 */
+		private static boolean isExplicitlyAnnotatedAsEntity(NodeDescription<?> entity) {
+			return entity.getUnderlyingClass().isAnnotationPresent(Node.class);
+		}
+
+		@Override
+		public Class<T> getUnderlyingClass() {
+			return type;
+		}
+
+		@Override
+		public @Nullable IdDescription getIdDescription() {
+			return null;
+		}
+
+		@Override
+		public Collection<GraphPropertyDescription> getGraphProperties() {
+			return null;
+		}
+
+		@Override
+		public Collection<GraphPropertyDescription> getGraphPropertiesInHierarchy() {
+			return null;
+		}
+
+		@Override
+		public Optional<GraphPropertyDescription> getGraphProperty(String fieldName) {
+			return Optional.empty();
+		}
+
+		@Override
+		public Collection<RelationshipDescription> getRelationships() {
+			return relationships;
+		}
+
+		@Override
+		public Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<PropertyFilter.RelaxedPropertyPath> propertyPredicate) {
+			return null;
+		}
+
+		@Override
+		public Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<PropertyFilter.RelaxedPropertyPath> propertyFilter, PropertyFilter.RelaxedPropertyPath path) {
+			return null;
+		}
+
+		@Override
+		public void addChildNodeDescription(NodeDescription<?> child) {
+
+		}
+
+		@Override
+		public Collection<NodeDescription<?>> getChildNodeDescriptionsInHierarchy() {
+			return null;
+		}
+
+		@Override
+		public void setParentNodeDescription(NodeDescription<?> parent) {
+
+		}
+
+		@Override
+		public @Nullable NodeDescription<?> getParentNodeDescription() {
+			return null;
+		}
+
+		@Override
+		public boolean containsPossibleCircles(Predicate<PropertyFilter.RelaxedPropertyPath> includeField) {
+			return false;
+		}
+
+		@Override
+		public boolean describesInterface() {
+			return false;
+		}
+
+		@Override
+		public boolean hasVersionProperty() {
+			return false;
+		}
+
+		@Override
+		public GraphPropertyDescription getVersionProperty() {
+			return null;
+		}
+
+		@Override
+		public GraphPropertyDescription getIdProperty() {
+			return idProperty;
+		}
+
+		@Override
+		public GraphPropertyDescription getPersistentNeo4jProperty(Class<? extends Annotation> targetNodeClass) {
+			return null;
 		}
 	}
-
-	void addPersistentProperty(Neo4jPersistentProperty property);
-
-	// todo void addAssociation(Association<Neo4jPersistentProperty> association);
-
-	void verify() throws MappingException;
-
-	// from persistent property
-	String getName();
-
-//	@Nullable
-//	PreferredConstructor<T, Neo4jPersistentProperty> getPersistenceConstructor();
-
-	boolean isConstructorArgument(Neo4jPersistentProperty property);
-
-	boolean isIdProperty(Neo4jPersistentProperty property);
-
-	boolean isVersionProperty(Neo4jPersistentProperty property);
-
-	@Nullable
-	Neo4jPersistentProperty getIdProperty();
-
-	@Nullable
-	Neo4jPersistentProperty getVersionProperty();
-
-	default Neo4jPersistentProperty getRequiredVersionProperty() {
-		Neo4jPersistentProperty property = this.getVersionProperty();
-		if (property != null) {
-			return property;
-		} else {
-			throw new IllegalStateException(String.format("Required version property not found for %s!", this.getType()));
-		}
-	}
-
-	@Nullable
-	Neo4jPersistentProperty getPersistentProperty(String name);
-
-	default Neo4jPersistentProperty getRequiredPersistentProperty(String name) {
-		Neo4jPersistentProperty property = this.getPersistentProperty(name);
-		if (property != null) {
-			return property;
-		} else {
-			throw new IllegalStateException(String.format("Required property %s not found for %s!", name, this.getType()));
-		}
-	}
-
-	@Nullable
-	default Neo4jPersistentProperty getPersistentProperty(Class<? extends Annotation> annotationType) {
-		Iterator<Neo4jPersistentProperty> it = this.getPersistentProperties(annotationType).iterator();
-		return it.hasNext() ? (Neo4jPersistentProperty)it.next() : null;
-	}
-
-	Iterable<Neo4jPersistentProperty> getPersistentProperties(Class<? extends Annotation> annotationType);
-
-	boolean hasIdProperty();
-
-	boolean hasVersionProperty();
-
-	Class<T> getType();
-
-//	Alias getTypeAlias();
-
-//	TypeInformation<T> getTypeInformation();
-
-	void doWithProperties(Consumer<Neo4jPersistentProperty> handler);
-
-	void doWithAssociations(Consumer<Neo4jPersistentProperty> consumer);
-
-	default void doWithAll(Consumer<Neo4jPersistentProperty> handler) {
-		Assert.notNull(handler, "PropertyHandler must not be null!");
-		this.doWithProperties(handler);
-		this.doWithAssociations(handler);
-	}
-
-	@Nullable
-	<A extends Annotation> A findAnnotation(Class<A> annotationType);
-
-	default <A extends Annotation> A getRequiredAnnotation(Class<A> annotationType) throws IllegalStateException {
-		A annotation = this.findAnnotation(annotationType);
-		if (annotation != null) {
-			return annotation;
-		} else {
-			throw new IllegalStateException(String.format("Required annotation %s not found for %s!", annotationType, this.getType()));
-		}
-	}
-
-	<A extends Annotation> boolean isAnnotationPresent(Class<A> annotationType);
-
-//	<B> PersistentPropertyAccessor<B> getPropertyAccessor(B bean);
-//
-//	<B> PersistentPropertyPathAccessor<B> getPropertyPathAccessor(B bean);
-//
-//	IdentifierAccessor getIdentifierAccessor(Object bean);
-
-	boolean isNew(Object bean);
-
-	boolean isImmutable();
-
-	boolean requiresPropertyPopulation();
-
 }

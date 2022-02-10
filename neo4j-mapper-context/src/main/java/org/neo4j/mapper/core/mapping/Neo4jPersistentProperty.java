@@ -16,11 +16,6 @@
 package org.neo4j.mapper.core.mapping;
 
 import org.apiguardian.api.API;
-import org.jetbrains.annotations.Nullable;
-import org.neo4j.mapper.core.schema.DynamicLabels;
-
-import java.lang.annotation.Annotation;
-import java.util.Optional;
 
 /**
  * A interface with additional methods for metadata related to Neo4j.
@@ -33,88 +28,4 @@ import java.util.Optional;
 @API(status = API.Status.STABLE, since = "6.0")
 public interface Neo4jPersistentProperty extends GraphPropertyDescription {
 
-	/**
-	 * Dynamic associations are associations to non-simple types stored in a map with a key type of
-	 * {@literal java.lang.String} or enum.
-	 *
-	 * @return True, if this association is a dynamic association.
-	 */
-	default boolean isDynamicAssociation() {
-
-		return isAssociation() && isMap() && (getComponentType() == String.class || getComponentType().isEnum());
-	}
-
-	/**
-	 * Dynamic one-to-many associations are associations to non-simple types stored in a map with a key type of
-	 * {@literal java.lang.String} and values of {@literal java.util.Collection}.
-	 *
-	 * @return True, if this association is a dynamic association with multiple values per type.
-	 * @since 6.0.1
-	 */
-	default boolean isDynamicOneToManyAssociation() {
-
-		return this.isDynamicAssociation() && getTypeInformation().getRequiredActualType().isCollectionLike();
-	}
-
-	/**
-	 * @return whether the property is a property describing dynamic labels
-	 * @since 6.0
-	 */
-	default boolean isDynamicLabels() {
-		return this.isAnnotationPresent(DynamicLabels.class) && this.isCollectionLike();
-	}
-
-//	@Nullable
-//	Neo4jPersistentPropertyConverter<?> getOptionalConverter();
-
-	/**
-	 * @return True if this property targets an entity which is a container for relationship properties.
-	 */
-	boolean isEntityWithRelationshipProperties();
-
-	/**
-	 * Computes a prefix to be used on multiple properties on a node when this persistent property is annotated with
-	 * {@link CompositeProperty @CompositeProperty}.
-	 *
-	 * @return A valid prefix
-	 */
-//	default String computePrefixWithDelimiter() {
-//		CompositeProperty compositeProperty = getRequiredAnnotation(CompositeProperty.class);
-//		return Optional.of(compositeProperty.prefix()).map(String::trim).filter(s -> !s.isEmpty())
-//				.orElseGet(this::getFieldName) + compositeProperty.delimiter();
-//	}
-
-	/**
-	 * @return {@literal true} if this is a read only property.
-	 */
-	default boolean isReadOnly() {
-		return false;
-	}
-
-	boolean isIdProperty();
-
-	boolean isEntity();
-
-	boolean isVersionProperty();
-
-	boolean isCollectionLike();
-
-	boolean isMap();
-
-	boolean isArray();
-
-	boolean isTransient();
-
-	boolean isWritable();
-
-	boolean isImmutable();
-
-	boolean isAssociation();
-
-	boolean isAnnotationPresent(Class<? extends Annotation> annotationType);
-
-	@Nullable
-	Class<?> getComponentType();
-
-	TypeInformation getTypeInformation();
 }

@@ -16,6 +16,12 @@
 package org.neo4j.mapper.core.mapping;
 
 import org.apiguardian.api.API;
+import org.jetbrains.annotations.Nullable;
+import org.neo4j.mapper.core.convert.Neo4jPersistentPropertyConverter;
+import org.neo4j.mapper.core.schema.DynamicLabels;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 
 /**
  * Provides minimal information how to map class attributes to the properties of a node or a relationship.
@@ -32,6 +38,251 @@ import org.apiguardian.api.API;
 public interface GraphPropertyDescription {
 
 	/**
+	 * Dynamic associations are associations to non-simple types stored in a map with a key type of
+	 * {@literal java.lang.String} or enum.
+	 *
+	 * @return True, if this association is a dynamic association.
+	 */
+	default boolean isDynamicAssociation() {
+
+		return isAssociation() && isMap() && (getComponentType() == String.class || getComponentType().isEnum());
+	}
+
+	/**
+	 * Dynamic one-to-many associations are associations to non-simple types stored in a map with a key type of
+	 * {@literal java.lang.String} and values of {@literal java.util.Collection}.
+	 *
+	 * @return True, if this association is a dynamic association with multiple values per type.
+	 * @since 6.0.1
+	 */
+	default boolean isDynamicOneToManyAssociation() {
+
+		return this.isDynamicAssociation() && getNeo4jTypeInformation().getRequiredActualType().isCollectionLike();
+	}
+
+	/**
+	 * @return whether the property is a property describing dynamic labels
+	 * @since 6.0
+	 */
+	default boolean isDynamicLabels() {
+		return this.isNeo4jAnnotationPresent(DynamicLabels.class) && this.isCollectionLike();
+	}
+
+	@Nullable
+	Neo4jPersistentPropertyConverter<?> getOptionalConverter();
+
+	/**
+	 * @return True if this property targets an entity which is a container for relationship properties.
+	 */
+	boolean isEntityWithRelationshipProperties();
+
+	/**
+	 * Computes a prefix to be used on multiple properties on a node when this persistent property is annotated with
+	 * CompositeProperty @CompositeProperty.
+	 *
+	 * @return A valid prefix
+	 */
+	default String computePrefixWithDelimiter() {
+		return "ding";
+//		CompositeProperty compositeProperty = getRequiredNeo4jAnnotation(CompositeProperty.class);
+//		return Optional.of(compositeProperty.prefix()).map(String::trim).filter(s -> !s.isEmpty())
+//				.orElseGet(this::getFieldName) + compositeProperty.delimiter();
+	}
+
+	<T extends Annotation> T getRequiredNeo4jAnnotation(Class<? extends Annotation> annotationClass);
+
+	Neo4jPersistentEntity<?> getNeo4jOwner();
+	/**
+	 * @return {@literal true} if this is a read only property.
+	 */
+	default boolean isReadOnly() {
+		return false;
+	}
+
+	boolean isIdProperty();
+
+	boolean isEntity();
+
+	boolean isVersionProperty();
+
+	boolean isCollectionLike();
+
+	boolean isMap();
+
+	boolean isArray();
+
+	boolean isTransient();
+
+	boolean isWritable();
+
+	boolean isImmutable();
+
+	boolean isAssociation();
+
+	boolean isNeo4jAnnotationPresent(Class<? extends Annotation> annotationType);
+
+	@Nullable
+	Class<?> getComponentType();
+
+	TypeInformation<?> getNeo4jTypeInformation();
+
+	String getName();
+
+	Class<?> getType();
+
+	Class<?> getRawType();
+
+	@Nullable
+	<A extends Annotation> A findNeo4jAnnotation(Class<A> annotationType);
+
+	Class<?> getAssociationTargetType();
+
+	static GraphPropertyDescription forField(Field field) {
+		return new GraphPropertyDescription() {
+			@Override
+			public String getFieldName() {
+				return field.getName();
+			}
+
+			@Override
+			public String getPropertyName() {
+				// todo property naming from optional annotation
+				return field.getName();
+			}
+
+			@Override
+			public @Nullable Neo4jPersistentPropertyConverter<?> getOptionalConverter() {
+				return null;
+			}
+
+			@Override
+			public boolean isEntityWithRelationshipProperties() {
+				return false;
+			}
+
+			@Override
+			public <T extends Annotation> T getRequiredNeo4jAnnotation(Class<? extends Annotation> annotationClass) {
+				return null;
+			}
+
+			@Override
+			public Neo4jPersistentEntity<?> getNeo4jOwner() {
+				return null;
+			}
+
+			@Override
+			public boolean isIdProperty() {
+				return false;
+			}
+
+			@Override
+			public boolean isEntity() {
+				return false;
+			}
+
+			@Override
+			public boolean isVersionProperty() {
+				return false;
+			}
+
+			@Override
+			public boolean isCollectionLike() {
+				return false;
+			}
+
+			@Override
+			public boolean isMap() {
+				return false;
+			}
+
+			@Override
+			public boolean isArray() {
+				return false;
+			}
+
+			@Override
+			public boolean isTransient() {
+				return false;
+			}
+
+			@Override
+			public boolean isWritable() {
+				return false;
+			}
+
+			@Override
+			public boolean isImmutable() {
+				return false;
+			}
+
+			@Override
+			public boolean isAssociation() {
+				return false;
+			}
+
+			@Override
+			public boolean isNeo4jAnnotationPresent(Class<? extends Annotation> annotationType) {
+				return false;
+			}
+
+			@Override
+			public @Nullable Class<?> getComponentType() {
+				return null;
+			}
+
+			@Override
+			public TypeInformation<?> getNeo4jTypeInformation() {
+				return null;
+			}
+
+			@Override
+			public String getName() {
+				return null;
+			}
+
+			@Override
+			public Class<?> getType() {
+				return null;
+			}
+
+			@Override
+			public Class<?> getRawType() {
+				return null;
+			}
+
+			@Override
+			public <A extends Annotation> @Nullable A findNeo4jAnnotation(Class<A> annotationType) {
+				return null;
+			}
+
+			@Override
+			public Class<?> getAssociationTargetType() {
+				return null;
+			}
+
+			@Override
+			public boolean isInternalIdProperty() {
+				return false;
+			}
+
+			@Override
+			public Class<?> getActualType() {
+				return null;
+			}
+
+			@Override
+			public boolean isRelationship() {
+				return false;
+			}
+
+			@Override
+			public boolean isComposite() {
+				return false;
+			}
+		};
+	}
+
+	/**
 	 * @return The name of the attribute of the mapped class
 	 */
 	String getFieldName();
@@ -40,11 +291,6 @@ public interface GraphPropertyDescription {
 	 * @return The name of the property as stored in the graph.
 	 */
 	String getPropertyName();
-
-	/**
-	 * @return True if this property is the id property.
-	 */
-	boolean isIdProperty();
 
 	/**
 	 * @return True, if this property is the id property and the owner uses internal ids.

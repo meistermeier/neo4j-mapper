@@ -18,7 +18,9 @@ package org.neo4j.mapper.core.mapping;
 import org.apiguardian.api.API;
 import org.jetbrains.annotations.Nullable;
 import org.neo4j.cypherdsl.core.Expression;
+import org.neo4j.mapper.core.schema.TargetNode;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -111,6 +113,8 @@ public interface NodeDescription<T> {
 	 */
 	Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<PropertyFilter.RelaxedPropertyPath> propertyPredicate);
 
+	Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<PropertyFilter.RelaxedPropertyPath> propertyFilter, PropertyFilter.RelaxedPropertyPath path);
+
 	/**
 	 * Register a direct child node description for this entity.
 	 *
@@ -153,4 +157,30 @@ public interface NodeDescription<T> {
 	 * @since 6.0.8
 	 */
 	boolean describesInterface();
+
+	boolean hasVersionProperty();
+
+	GraphPropertyDescription getVersionProperty();
+
+	default GraphPropertyDescription getRequiredVersionProperty() {
+		GraphPropertyDescription versionProperty = getVersionProperty();
+		if (versionProperty == null) {
+			throw new IllegalStateException("Where is the version property???");
+		}
+
+		return versionProperty;
+	}
+
+	GraphPropertyDescription getIdProperty();
+
+	default GraphPropertyDescription getRequiredIdProperty() {
+		GraphPropertyDescription idProperty = getIdProperty();
+		if (idProperty == null) {
+			throw new IllegalStateException("Where is the id property???");
+		}
+
+		return idProperty;
+	}
+
+	GraphPropertyDescription getPersistentNeo4jProperty(Class<? extends Annotation> targetNodeClass);
 }
