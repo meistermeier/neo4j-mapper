@@ -21,10 +21,14 @@ import org.jetbrains.annotations.Nullable;
 import org.neo4j.cypherdsl.core.Expression;
 import org.neo4j.mapper.core.schema.Id;
 import org.neo4j.mapper.core.schema.Node;
+import org.neo4j.mapper.core.support.Lazy;
+import org.neo4j.mapper.core.support.ReflectionUtils;
 import org.neo4j.mapper.core.support.StringUtils;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,6 +36,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -197,6 +203,18 @@ public interface NodeDescription<T> {
 	static <T> NodeDescription<T> of(Class<T> entityClass) {
 		return new NodeDescriptionImpl<>(entityClass);
 	}
+
+	boolean requiresPropertyPopulation();
+
+	boolean isImmutable();
+
+	<IT> PropertyAccessor<IT> getPropertyAccessor(IT instance);
+
+	EntityConstructor<T> getPersistenceConstructor();
+
+	void doWithProperties(Consumer<GraphPropertyDescription> handler);
+
+	void doWithAssociations(Consumer<RelationshipDescription> handler);
 
 	class NodeDescriptionImpl<T> implements NodeDescription<T> {
 		private final Class<T> type;
@@ -395,7 +413,7 @@ public interface NodeDescription<T> {
 
 		@Override
 		public Collection<NodeDescription<?>> getChildNodeDescriptionsInHierarchy() {
-			return null;
+			return Set.of();
 		}
 
 		@Override
@@ -436,6 +454,75 @@ public interface NodeDescription<T> {
 		@Override
 		public GraphPropertyDescription getPersistentNeo4jProperty(Class<? extends Annotation> targetNodeClass) {
 			return null;
+		}
+
+		@Override
+		public boolean requiresPropertyPopulation() {
+			return !isImmutable() && properties.stream()
+				.anyMatch(it -> !(isConstructorArgument(it) || it.isTransient()));
+		}
+
+		private boolean isConstructorArgument(GraphPropertyDescription property) {
+			return false;
+		}
+
+		@Override public boolean isImmutable() {
+			return false;
+		}
+
+		@Override
+		public EntityConstructor<T> getPersistenceConstructor() {
+			Constructor<?> constructor = type.getConstructors()[0];
+			return new EntityConstructor<T>() {
+				@Override public boolean isConstructorParameter(GraphPropertyDescription property) {
+					return false;
+				}
+
+				@Override
+				public T createInstance() {
+					try {
+						return (T) constructor.newInstance();
+					} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+						e.printStackTrace();
+					}
+					return null;
+				}
+			};
+		}
+
+		@Override
+		public void doWithProperties(Consumer<GraphPropertyDescription> handler) {
+			properties.forEach(handler);
+		}
+
+		@Override public void doWithAssociations(Consumer<RelationshipDescription> handler) {
+			relationships.forEach(handler);
+		}
+
+		@Override
+		public PropertyAccessor<?> getPropertyAccessor(Object instance) {
+			return new PropertyAccessor<Object>() {
+				@Override
+				public Object getProperty(GraphPropertyDescription graphPropertyDescription) {
+					return null;
+				}
+
+				@Override
+				public void setProperty(GraphPropertyDescription graphPropertyDescription, Object value) {
+					try {
+						getUnderlyingClass()
+							.getField(graphPropertyDescription.getFieldName())
+							.set(instance, value);
+					} catch (IllegalAccessException | NoSuchFieldException e) {
+						e.printStackTrace();
+					}
+
+				}
+
+				@Override public Object getBean() {
+					return instance;
+				}
+			};
 		}
 	}
 

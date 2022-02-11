@@ -25,5 +25,5 @@ import org.apiguardian.api.API;
  * @since 6.0
  */
 @API(status = API.Status.INTERNAL, since = "6.0")
-public interface Neo4jEntityConverter extends NodeReader, NodeWriter {
+public interface Neo4jEntityConverter extends NodeReader {//}, NodeWriter {
 }

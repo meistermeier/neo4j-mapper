@@ -283,7 +283,7 @@ public interface GraphPropertyDescription {
 
 			@Override
 			public Class<?> getActualType() {
-				return null;
+				return isMap() ? getMapValueType() : getComponentType();
 			}
 
 			@Override
@@ -302,6 +302,16 @@ public interface GraphPropertyDescription {
 			@Override
 			public boolean isComposite() {
 				return false;
+			}
+
+			@Override
+			public Wither getWither() {
+				return null;
+			}
+
+			@Override
+			public GraphPropertyDescription getInverse() {
+				return this;
 			}
 		};
 	}
@@ -337,4 +347,12 @@ public interface GraphPropertyDescription {
 	 * @return True if the entity's property (this object) is stored as multiple properties on a node or relationship.
 	 */
 	boolean isComposite();
+
+	Wither getWither();
+
+	GraphPropertyDescription getInverse();
+
+	interface Wither {
+
+	}
 }

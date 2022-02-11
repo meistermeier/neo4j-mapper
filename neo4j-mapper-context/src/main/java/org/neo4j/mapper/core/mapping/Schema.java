@@ -112,7 +112,7 @@ public interface Schema {
 		Neo4jEntityConverter entityConverter = getEntityConverter();
 		return t -> {
 			Map<String, Object> parameters = new HashMap<>();
-			entityConverter.write(t, parameters);
+			// entityConverter.write(t, parameters);
 			return parameters;
 		};
 	}

@@ -10,29 +10,23 @@ import org.testcontainers.utility.DockerImageName;
 
 public class Example1 {
 
-@Node
-record Movie(@Id String title) {}
+	public static void main(String[] args) {
+		var driver = Environment.getDriver();
+		driver.session().run("CREATE (:Movie{title: 'The Matrix'})").consume();
 
-public static void main(String[] args) {
-	Neo4jContainer<?> container = new Neo4jContainer<>(DockerImageName.parse("neo4j:4.4.3")).withoutAuthentication();
-	container.start();
+		NodeDescription<?> movieEntity = NodeDescription.of(Movie.class);
 
-	var driver = GraphDatabase.driver(container.getBoltUrl());
-	driver.session().run("CREATE (:Movie{title: 'The Matrix'})");
+		var cypherGenerator = CypherGenerator.INSTANCE;
+		var match = cypherGenerator.prepareMatchOf(movieEntity);
+		var returnClause = cypherGenerator.createReturnStatementForMatch(movieEntity);
+		var cypher = match.returning(returnClause).build().getCypher();
 
-	NodeDescription<?> movieEntity = NodeDescription.of(Movie.class);
+		driver
+				.session()
+				.run(cypher)
+				.list(record -> new Movie(record.get("movie").get("title").asString()))
+				.forEach(System.out::println); // Movie[title=The Matrix]
 
-	var cypherGenerator = CypherGenerator.INSTANCE;
-	var match = cypherGenerator.prepareMatchOf(movieEntity);
-	var returnClause = cypherGenerator.createReturnStatementForMatch(movieEntity);
-	var cypher = match.returning(returnClause).build().getCypher();
-
-	driver
-			.session()
-			.run(cypher)
-			.list(record -> new Movie(record.get("movie").get("title").asString()))
-			.forEach(System.out::println); // Movie[title=The Matrix]
-
-	container.stop();
-}
+		Environment.stopContainer();
+	}
 }
