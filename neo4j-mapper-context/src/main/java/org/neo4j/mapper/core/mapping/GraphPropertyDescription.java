@@ -19,9 +19,14 @@ import org.apiguardian.api.API;
 import org.jetbrains.annotations.Nullable;
 import org.neo4j.mapper.core.convert.Neo4jPersistentPropertyConverter;
 import org.neo4j.mapper.core.schema.DynamicLabels;
+import org.neo4j.mapper.core.schema.Relationship;
+import org.neo4j.mapper.core.support.Neo4jSimpleTypes;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * Provides minimal information how to map class attributes to the properties of a node or a relationship.
@@ -45,7 +50,7 @@ public interface GraphPropertyDescription {
 	 */
 	default boolean isDynamicAssociation() {
 
-		return isAssociation() && isMap() && (getComponentType() == String.class || getComponentType().isEnum());
+		return isRelationship() && isMap() && (getComponentType() == String.class || getComponentType().isEnum());
 	}
 
 	/**
@@ -117,8 +122,6 @@ public interface GraphPropertyDescription {
 
 	boolean isImmutable();
 
-	boolean isAssociation();
-
 	boolean isNeo4jAnnotationPresent(Class<? extends Annotation> annotationType);
 
 	@Nullable
@@ -187,12 +190,12 @@ public interface GraphPropertyDescription {
 
 			@Override
 			public boolean isCollectionLike() {
-				return false;
+				return Collections.class.isAssignableFrom(field.getType());
 			}
 
 			@Override
 			public boolean isMap() {
-				return false;
+				return Map.class.isAssignableFrom(field.getType());
 			}
 
 			@Override
@@ -216,18 +219,24 @@ public interface GraphPropertyDescription {
 			}
 
 			@Override
-			public boolean isAssociation() {
-				return false;
-			}
-
-			@Override
 			public boolean isNeo4jAnnotationPresent(Class<? extends Annotation> annotationType) {
 				return false;
 			}
 
 			@Override
 			public @Nullable Class<?> getComponentType() {
-				return null;
+				Class<?> fieldType = field.getType();
+
+				boolean isCollection = isCollectionLike();
+				boolean isMap = isMap();
+
+				Class<?> componentType = fieldType;
+
+				if (isCollection || isMap) {
+					componentType = (Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
+				}
+
+				return componentType;
 			}
 
 			@Override
@@ -242,7 +251,14 @@ public interface GraphPropertyDescription {
 
 			@Override
 			public Class<?> getType() {
-				return null;
+				if (isMap()) {
+					return getMapValueType();
+				}
+				return getComponentType();
+			}
+
+			private Class<?> getMapValueType() {
+				return (Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[1];
 			}
 
 			@Override
@@ -252,7 +268,7 @@ public interface GraphPropertyDescription {
 
 			@Override
 			public <A extends Annotation> @Nullable A findNeo4jAnnotation(Class<A> annotationType) {
-				return null;
+				return field.getAnnotation(annotationType);
 			}
 
 			@Override
@@ -272,7 +288,15 @@ public interface GraphPropertyDescription {
 
 			@Override
 			public boolean isRelationship() {
-				return false;
+
+				Class<?> type = getComponentType();
+				if (isMap()) {
+					type = getMapValueType();
+				}
+				var noSimpleType = !Neo4jSimpleTypes.NEO4J_NATIVE_TYPES.contains(type);
+
+				var hasAnnotation = field.isAnnotationPresent(Relationship.class);
+				return hasAnnotation || noSimpleType;
 			}
 
 			@Override

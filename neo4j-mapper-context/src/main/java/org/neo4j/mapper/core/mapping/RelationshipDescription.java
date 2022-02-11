@@ -19,7 +19,10 @@ import org.apiguardian.api.API;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.neo4j.mapper.core.schema.Relationship;
+import org.neo4j.mapper.core.support.Assert;
+import org.neo4j.mapper.core.support.StringUtils;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -36,6 +39,113 @@ public interface RelationshipDescription {
 	String NAME_OF_RELATIONSHIP = "__relationship__";
 
 	String NAME_OF_RELATIONSHIP_TYPE = "__relationshipType__";
+
+	static RelationshipDescription of(GraphPropertyDescription relationshipProperty) {
+		return new RelationshipDescription() {
+			private Relationship relationshipAnnotation = relationshipProperty.findNeo4jAnnotation(Relationship.class);
+
+			@Override
+			public String getType() {
+				if (relationshipAnnotation != null) {
+					if (StringUtils.hasText(relationshipAnnotation.value())) {
+						return relationshipAnnotation.value();
+					} else if (StringUtils.hasText(relationshipAnnotation.type())) {
+						return relationshipAnnotation.type();
+					}
+				}
+
+				return deriveRelationshipType(relationshipProperty.getFieldName());
+			}
+
+			static String deriveRelationshipType(String name) {
+
+				Assert.hasText(name, "The name to derive the type from is required.");
+
+				StringBuilder sb = new StringBuilder();
+
+				int codePoint;
+				int previousIndex = 0;
+				int i = 0;
+				while (i < name.length()) {
+					codePoint = name.codePointAt(i);
+					if (Character.isLowerCase(codePoint)) {
+						if (i > 0 && !Character.isLetter(name.codePointAt(previousIndex))) {
+							sb.append("_");
+						}
+						codePoint = Character.toUpperCase(codePoint);
+					} else if (sb.length() > 0) {
+						sb.append("_");
+					}
+					sb.append(Character.toChars(codePoint));
+					previousIndex = i;
+					i += Character.charCount(codePoint);
+				}
+				return sb.toString();
+			}
+
+			@Override
+			public boolean isDynamic() {
+				return relationshipProperty.isMap() ;
+			}
+
+			@Override
+			public NodeDescription<?> getSource() {
+				return null;
+			}
+
+			@Override
+			public NodeDescription<?> getTarget() {
+				return Neo4jPersistentEntity.of(relationshipProperty.getType());
+			}
+
+			@Override
+			public String getFieldName() {
+				return null;
+			}
+
+			@Override
+			public Relationship.Direction getDirection() {
+				return relationshipAnnotation != null && relationshipAnnotation.direction() !=null
+						? relationshipAnnotation.direction()
+						: Relationship.Direction.OUTGOING;
+			}
+
+			@Override
+			public @Nullable NodeDescription<?> getRelationshipPropertiesEntity() {
+				return null;
+			}
+
+			@Override
+			public boolean hasRelationshipProperties() {
+				return false;
+			}
+
+			@Override
+			public void setRelationshipObverse(RelationshipDescription relationshipObverse) {
+
+			}
+
+			@Override
+			public RelationshipDescription getRelationshipObverse() {
+				return null;
+			}
+
+			@Override
+			public boolean hasRelationshipObverse() {
+				return false;
+			}
+
+			@Override
+			public GraphPropertyDescription getInverse() {
+				return relationshipProperty;
+			}
+
+			@Override
+			public Neo4jPersistentProperty getObverse() {
+				return null;
+			}
+		};
+	}
 
 	/**
 	 * If this relationship is dynamic, then this method always returns the name of the inverse property.
@@ -137,7 +247,7 @@ public interface RelationshipDescription {
 	 */
 	boolean hasRelationshipObverse();
 
-	Neo4jPersistentProperty getInverse();
+	GraphPropertyDescription getInverse();
 
 	Neo4jPersistentProperty getObverse();
 }

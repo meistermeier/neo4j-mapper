@@ -31,7 +31,6 @@ class CypherGeneratorTest {
 
 	@Test
 	void shouldCreateRelationshipCreationQueryWithLabelIfPresent() {
-//		Neo4jPersistentEntity<?> persistentEntity = Neo4jPersistentEntity.of(Entity1.class);
 		Neo4jPersistentEntity<?> persistentEntity = Neo4jPersistentEntity.of(Entity1.class);
 		RelationshipDescription relationshipDescription = Mockito.mock(RelationshipDescription.class);
 		when(relationshipDescription.isDynamic()).thenReturn(true);

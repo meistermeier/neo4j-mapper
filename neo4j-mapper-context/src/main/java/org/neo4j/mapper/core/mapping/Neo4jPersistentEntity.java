@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -44,29 +43,45 @@ import java.util.stream.Stream;
 public interface Neo4jPersistentEntity<T> extends NodeDescription<T> {
 
 	static Neo4jPersistentEntity<?> of(Class<?> entityClass) {
-		return new Implementation<>(entityClass);
+		return new Neo4jPersistentEntityImpl<>(entityClass);
 	}
 
 
-	class Implementation<T> implements Neo4jPersistentEntity<T> {
+	class Neo4jPersistentEntityImpl<T> implements Neo4jPersistentEntity<T> {
 
 		private final Class<T> type;
 		private final String primaryLabel;
 		private final GraphPropertyDescription idProperty;
 		private final NodeDescription<?> parentNodeDescription = null;
-		private final Collection<RelationshipDescription> relationships = new HashSet<>();
+		private final Collection<GraphPropertyDescription> properties;
+		private final Collection<RelationshipDescription> relationships;
 
-		public Implementation(Class<T> type) {
+		public Neo4jPersistentEntityImpl(Class<T> type) {
 			this.type = type;
 			this.primaryLabel = computePrimaryLabel(type);
 			this.idProperty = findIdProperty(type);
+			this.properties = parseProperties(type);
+			this.relationships = parseRelationships(properties);
+		}
+
+		private List<GraphPropertyDescription> parseProperties(Class<T> type) {
+			return Arrays.stream(type.getDeclaredFields())
+					.map(GraphPropertyDescription::forField)
+					.toList();
+		}
+
+		private List<RelationshipDescription> parseRelationships(Collection<GraphPropertyDescription> properties) {
+			return properties.stream()
+					.filter(GraphPropertyDescription::isRelationship)
+					.map(RelationshipDescription::of)
+					.toList();
 		}
 
 		private GraphPropertyDescription findIdProperty(Class<?> type) {
 			List<Field> candidates = Arrays.stream(type.getDeclaredFields())
 					.filter(field -> field.isAnnotationPresent(Id.class)).toList();
 			if (candidates.size() != 1) {
-				throw new IllegalStateException("Houston we have a problem");
+				throw new IllegalStateException("No or too much id fields found for " + type + " namentlich " + candidates);
 			}
 
 			return GraphPropertyDescription.forField(candidates.get(0));
