@@ -95,7 +95,7 @@ public interface RelationshipDescription {
 
 			@Override
 			public NodeDescription<?> getTarget() {
-				return Neo4jPersistentEntity.of(relationshipProperty.getType());
+				return NodeDescription.of(relationshipProperty.getType());
 			}
 
 			@Override

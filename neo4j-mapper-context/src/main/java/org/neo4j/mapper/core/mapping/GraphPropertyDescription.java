@@ -96,7 +96,7 @@ public interface GraphPropertyDescription {
 
 	<T extends Annotation> T getRequiredNeo4jAnnotation(Class<? extends Annotation> annotationClass);
 
-	Neo4jPersistentEntity<?> getNeo4jOwner();
+	NodeDescription<?> getNeo4jOwner();
 	/**
 	 * @return {@literal true} if this is a read only property.
 	 */
@@ -169,7 +169,7 @@ public interface GraphPropertyDescription {
 			}
 
 			@Override
-			public Neo4jPersistentEntity<?> getNeo4jOwner() {
+			public NodeDescription<?> getNeo4jOwner() {
 				return null;
 			}
 

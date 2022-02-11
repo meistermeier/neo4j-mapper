@@ -9,8 +9,8 @@ import org.mockito.Mockito;
 import org.neo4j.cypherdsl.core.Cypher;
 import org.neo4j.cypherdsl.core.Statement;
 import org.neo4j.cypherdsl.core.renderer.Renderer;
-import org.neo4j.mapper.core.mapping.Neo4jPersistentEntity;
 import org.neo4j.mapper.core.mapping.Neo4jPersistentProperty;
+import org.neo4j.mapper.core.mapping.NodeDescription;
 import org.neo4j.mapper.core.mapping.RelationshipDescription;
 import org.neo4j.mapper.core.schema.Id;
 import org.neo4j.mapper.core.schema.Node;
@@ -31,7 +31,7 @@ class CypherGeneratorTest {
 
 	@Test
 	void shouldCreateRelationshipCreationQueryWithLabelIfPresent() {
-		Neo4jPersistentEntity<?> persistentEntity = Neo4jPersistentEntity.of(Entity1.class);
+		NodeDescription<?> persistentEntity = NodeDescription.of(Entity1.class);
 		RelationshipDescription relationshipDescription = Mockito.mock(RelationshipDescription.class);
 		when(relationshipDescription.isDynamic()).thenReturn(true);
 
@@ -45,7 +45,7 @@ class CypherGeneratorTest {
 
 	@Test
 	void shouldCreateRelationshipCreationQueryWithMultipleLabels() {
-		Neo4jPersistentEntity<?> persistentEntity = Neo4jPersistentEntity.of(MultipleLabelEntity1.class);
+		NodeDescription<?> persistentEntity = NodeDescription.of(MultipleLabelEntity1.class);
 		RelationshipDescription relationshipDescription = Mockito.mock(RelationshipDescription.class);
 		when(relationshipDescription.isDynamic()).thenReturn(true);
 
@@ -61,7 +61,7 @@ class CypherGeneratorTest {
 	@Test
 	void shouldCreateRelationshipCreationQueryWithoutUsingInternalIds() {
 		RelationshipDescription relationshipDescription = Mockito.mock(RelationshipDescription.class);
-		Neo4jPersistentEntity<?> persistentEntity = Mockito.mock(Neo4jPersistentEntity.class);
+		NodeDescription<?> persistentEntity = Mockito.mock(NodeDescription.class);
 		Neo4jPersistentProperty persistentProperty = Mockito.mock(Neo4jPersistentProperty.class);
 
 		when(relationshipDescription.isDynamic()).thenReturn(true);
@@ -78,8 +78,8 @@ class CypherGeneratorTest {
 
 	@Test
 	void shouldCreateRelationshipRemoveQueryWithLabelIfPresent() {
-		Neo4jPersistentEntity<?> persistentEntity = Neo4jPersistentEntity.of(Entity1.class);
-		Neo4jPersistentEntity<?> relatedEntity = Neo4jPersistentEntity.of(Entity2.class);
+		NodeDescription<?> persistentEntity = NodeDescription.of(Entity1.class);
+		NodeDescription<?> relatedEntity = NodeDescription.of(Entity2.class);
 		RelationshipDescription relationshipDescription = Mockito.mock(RelationshipDescription.class);
 		doReturn(relatedEntity).when(relationshipDescription).getTarget();
 
@@ -91,8 +91,8 @@ class CypherGeneratorTest {
 
 	@Test
 	void shouldCreateRelationshipRemoveQueryWithMultipleLabels() {
-		Neo4jPersistentEntity<?> persistentEntity = Neo4jPersistentEntity.of(MultipleLabelEntity1.class);
-		Neo4jPersistentEntity<?> relatedEntity = Neo4jPersistentEntity.of(MultipleLabelEntity2.class);
+		NodeDescription<?> persistentEntity = NodeDescription.of(MultipleLabelEntity1.class);
+		NodeDescription<?> relatedEntity = NodeDescription.of(MultipleLabelEntity2.class);
 		RelationshipDescription relationshipDescription = Mockito.mock(RelationshipDescription.class);
 		doReturn(relatedEntity).when(relationshipDescription).getTarget();
 
@@ -105,10 +105,10 @@ class CypherGeneratorTest {
 	@Test
 	void shouldCreateRelationshipRemoveQueryWithoutUsingInternalIds() {
 
-		Neo4jPersistentEntity<?> relatedEntity = Neo4jPersistentEntity.of(Entity2.class);
+		NodeDescription<?> relatedEntity = NodeDescription.of(Entity2.class);
 
 		RelationshipDescription relationshipDescription = Mockito.mock(RelationshipDescription.class);
-		Neo4jPersistentEntity<?> persistentEntity = Mockito.mock(Neo4jPersistentEntity.class);
+		NodeDescription<?> persistentEntity = Mockito.mock(NodeDescription.class);
 		Neo4jPersistentProperty persistentProperty = Mockito.mock(Neo4jPersistentProperty.class);
 		doReturn(relatedEntity).when(relationshipDescription).getTarget();
 
@@ -192,7 +192,7 @@ class CypherGeneratorTest {
 
 	@Test
 	void shouldCreateDynamicRelationshipPathQueryForEnumsWithoutWildcardRelationships() {
-		Neo4jPersistentEntity<?> persistentEntity = Neo4jPersistentEntity.of(CyclicEntityWithEnumeratedDynamicRelationship1.class);
+		NodeDescription<?> persistentEntity = NodeDescription.of(CyclicEntityWithEnumeratedDynamicRelationship1.class);
 
 		org.neo4j.cypherdsl.core.Node rootNode = Cypher.anyNode(Constants.NAME_OF_ROOT_NODE);
 		Collection<RelationshipDescription> relationships = persistentEntity.getRelationships();
@@ -213,7 +213,7 @@ class CypherGeneratorTest {
 
 	@Test
 	void shouldCreateDynamicRelationshipPathQueryForStringsWithWildcardRelationships() {
-		Neo4jPersistentEntity<?> persistentEntity = Neo4jPersistentEntity.of(CyclicEntityWithStringDynamicRelationship1.class);
+		NodeDescription<?> persistentEntity = NodeDescription.of(CyclicEntityWithStringDynamicRelationship1.class);
 
 		org.neo4j.cypherdsl.core.Node rootNode = Cypher.anyNode(Constants.NAME_OF_ROOT_NODE);
 		Collection<RelationshipDescription> relationships = persistentEntity.getRelationships();
