@@ -19,6 +19,7 @@ public class Environment {
 	static {
 		container.start();
 		driver = GraphDatabase.driver(container.getBoltUrl());
+		driver.session().run("MATCH (n) detach delete n").consume();
 	}
 
 	static Driver getDriver() {

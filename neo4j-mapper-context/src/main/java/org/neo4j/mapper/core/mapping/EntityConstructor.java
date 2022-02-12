@@ -4,5 +4,5 @@ public interface EntityConstructor<T> {
 
     boolean isConstructorParameter(GraphPropertyDescription property);
 
-    T createInstance();
+    T createInstance(ParameterValueProvider<T> parameterValueProvider);
 }

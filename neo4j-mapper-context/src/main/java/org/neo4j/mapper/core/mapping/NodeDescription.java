@@ -29,6 +29,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -388,7 +389,7 @@ public interface NodeDescription<T> {
 
 		@Override
 		public Optional<GraphPropertyDescription> getGraphProperty(String fieldName) {
-			return Optional.empty();
+			return properties.stream().filter(property -> property.getFieldName().equals(fieldName)).findFirst();
 		}
 
 		@Override
@@ -474,14 +475,22 @@ public interface NodeDescription<T> {
 		public EntityConstructor<T> getPersistenceConstructor() {
 			Constructor<?> constructor = type.getConstructors()[0];
 			return new EntityConstructor<T>() {
-				@Override public boolean isConstructorParameter(GraphPropertyDescription property) {
-					return false;
+				@Override
+				public boolean isConstructorParameter(GraphPropertyDescription property) {
+					return Arrays.stream(constructor.getParameters()).anyMatch(parameter ->
+						parameter.getName().equals(property.getFieldName()));
 				}
 
 				@Override
-				public T createInstance() {
+				public T createInstance(ParameterValueProvider<T> parameterValueProvider) {
 					try {
-						return (T) constructor.newInstance();
+						Object[] parameters = new Object[constructor.getParameterCount()];
+						Parameter[] constructorParameters = constructor.getParameters();
+						for (int i = 0; i < constructorParameters.length; i++) {
+							Parameter parameter = constructorParameters[i];
+							parameters[i] = parameterValueProvider.getParameterValue(ConstructorParameter.of(parameter));
+						}
+						return (T) constructor.newInstance(parameters);
 					} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
 						e.printStackTrace();
 					}
