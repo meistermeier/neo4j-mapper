@@ -62,7 +62,7 @@ public interface GraphPropertyDescription {
 	 */
 	default boolean isDynamicOneToManyAssociation() {
 
-		return this.isDynamicAssociation() && getNeo4jTypeInformation().getRequiredActualType().isCollectionLike();
+		return this.isDynamicAssociation() && getTypeInformation().getRequiredActualType().isCollectionLike();
 	}
 
 	/**
@@ -70,7 +70,7 @@ public interface GraphPropertyDescription {
 	 * @since 6.0
 	 */
 	default boolean isDynamicLabels() {
-		return this.isNeo4jAnnotationPresent(DynamicLabels.class) && this.isCollectionLike();
+		return this.isAnnotationPresent(DynamicLabels.class) && this.isCollectionLike();
 	}
 
 	@Nullable
@@ -94,9 +94,9 @@ public interface GraphPropertyDescription {
 //				.orElseGet(this::getFieldName) + compositeProperty.delimiter();
 	}
 
-	<T extends Annotation> T getRequiredNeo4jAnnotation(Class<? extends Annotation> annotationClass);
+	<T extends Annotation> T getRequiredAnnotation(Class<? extends Annotation> annotationClass);
 
-	NodeDescription<?> getNeo4jOwner();
+	NodeDescription<?> getOwner();
 	/**
 	 * @return {@literal true} if this is a read only property.
 	 */
@@ -122,12 +122,12 @@ public interface GraphPropertyDescription {
 
 	boolean isImmutable();
 
-	boolean isNeo4jAnnotationPresent(Class<? extends Annotation> annotationType);
+	boolean isAnnotationPresent(Class<? extends Annotation> annotationType);
 
 	@Nullable
 	Class<?> getComponentType();
 
-	TypeInformation<?> getNeo4jTypeInformation();
+	TypeInformation<?> getTypeInformation();
 
 	String getName();
 
@@ -136,7 +136,7 @@ public interface GraphPropertyDescription {
 	Class<?> getRawType();
 
 	@Nullable
-	<A extends Annotation> A findNeo4jAnnotation(Class<A> annotationType);
+	<A extends Annotation> A findAnnotation(Class<A> annotationType);
 
 	Class<?> getAssociationTargetType();
 
@@ -164,12 +164,12 @@ public interface GraphPropertyDescription {
 			}
 
 			@Override
-			public <T extends Annotation> T getRequiredNeo4jAnnotation(Class<? extends Annotation> annotationClass) {
+			public <T extends Annotation> T getRequiredAnnotation(Class<? extends Annotation> annotationClass) {
 				return null;
 			}
 
 			@Override
-			public NodeDescription<?> getNeo4jOwner() {
+			public NodeDescription<?> getOwner() {
 				return null;
 			}
 
@@ -219,7 +219,7 @@ public interface GraphPropertyDescription {
 			}
 
 			@Override
-			public boolean isNeo4jAnnotationPresent(Class<? extends Annotation> annotationType) {
+			public boolean isAnnotationPresent(Class<? extends Annotation> annotationType) {
 				return false;
 			}
 
@@ -240,7 +240,7 @@ public interface GraphPropertyDescription {
 			}
 
 			@Override
-			public TypeInformation<?> getNeo4jTypeInformation() {
+			public TypeInformation<?> getTypeInformation() {
 				return null;
 			}
 
@@ -267,7 +267,7 @@ public interface GraphPropertyDescription {
 			}
 
 			@Override
-			public <A extends Annotation> @Nullable A findNeo4jAnnotation(Class<A> annotationType) {
+			public <A extends Annotation> @Nullable A findAnnotation(Class<A> annotationType) {
 				return field.getAnnotation(annotationType);
 			}
 

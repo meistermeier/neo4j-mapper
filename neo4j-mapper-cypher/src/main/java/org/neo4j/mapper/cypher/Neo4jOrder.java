@@ -1,6 +1,6 @@
 package org.neo4j.mapper.cypher;
 
-interface Neo4jOrder {
+public interface Neo4jOrder {
 
 	static Neo4jOrder asc(String orderByProperty) {
 		return new Neo4jOrderImpl(Neo4jSort.Direction.ASC, orderByProperty);

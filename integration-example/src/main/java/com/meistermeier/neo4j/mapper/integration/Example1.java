@@ -1,12 +1,7 @@
 package com.meistermeier.neo4j.mapper.integration;
 
-import org.neo4j.driver.GraphDatabase;
 import org.neo4j.mapper.core.mapping.NodeDescription;
-import org.neo4j.mapper.core.schema.Id;
-import org.neo4j.mapper.core.schema.Node;
 import org.neo4j.mapper.cypher.CypherGenerator;
-import org.testcontainers.containers.Neo4jContainer;
-import org.testcontainers.utility.DockerImageName;
 
 public class Example1 {
 

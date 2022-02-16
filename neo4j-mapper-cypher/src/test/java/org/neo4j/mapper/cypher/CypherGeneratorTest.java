@@ -9,6 +9,7 @@ import org.mockito.Mockito;
 import org.neo4j.cypherdsl.core.Cypher;
 import org.neo4j.cypherdsl.core.Statement;
 import org.neo4j.cypherdsl.core.renderer.Renderer;
+import org.neo4j.mapper.core.mapping.Constants;
 import org.neo4j.mapper.core.mapping.Neo4jPersistentProperty;
 import org.neo4j.mapper.core.mapping.NodeDescription;
 import org.neo4j.mapper.core.mapping.RelationshipDescription;

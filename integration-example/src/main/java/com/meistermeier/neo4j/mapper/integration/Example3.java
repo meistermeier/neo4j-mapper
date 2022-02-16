@@ -1,6 +1,5 @@
 package com.meistermeier.neo4j.mapper.integration;
 
-import org.neo4j.driver.Driver;
 import org.neo4j.driver.Value;
 import org.neo4j.mapper.core.convert.Neo4jPersistentPropertyConverter;
 import org.neo4j.mapper.core.mapping.DefaultNeo4jEntityConverter;

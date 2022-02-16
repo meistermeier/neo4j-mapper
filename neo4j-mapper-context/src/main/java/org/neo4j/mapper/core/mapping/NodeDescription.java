@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import org.neo4j.cypherdsl.core.Expression;
 import org.neo4j.mapper.core.schema.Id;
 import org.neo4j.mapper.core.schema.Node;
+import org.neo4j.mapper.core.schema.RelationshipProperties;
 import org.neo4j.mapper.core.support.Lazy;
 import org.neo4j.mapper.core.support.ReflectionUtils;
 import org.neo4j.mapper.core.support.StringUtils;
@@ -127,9 +128,9 @@ public interface NodeDescription<T> {
 	 * @param propertyPredicate - Predicate to filter the fields on this node description to
 	 * @return The relationships defined by instances of this node.
 	 */
-	Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<PropertyFilter.RelaxedPropertyPath> propertyPredicate);
+	Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<RelaxedPropertyPath> propertyPredicate);
 
-	Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<PropertyFilter.RelaxedPropertyPath> propertyFilter, PropertyFilter.RelaxedPropertyPath path);
+	Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<RelaxedPropertyPath> propertyFilter, RelaxedPropertyPath path);
 
 	/**
 	 * Register a direct child node description for this entity.
@@ -167,7 +168,7 @@ public interface NodeDescription<T> {
 	 * @param includeField A predicate used to determine the properties that need to be looked at while detecting possible circles.
 	 * @return True if the domain would contain schema circles.
 	 */
-	boolean containsPossibleCircles(Predicate<PropertyFilter.RelaxedPropertyPath> includeField);
+	boolean containsPossibleCircles(Predicate<RelaxedPropertyPath> includeField);
 
 	/**
 	 * @return True if this persistent entity has been created for an interface.
@@ -216,6 +217,18 @@ public interface NodeDescription<T> {
 	void doWithProperties(Consumer<GraphPropertyDescription> handler);
 
 	void doWithAssociations(Consumer<RelationshipDescription> handler);
+
+	Optional<GraphPropertyDescription> getDynamicLabelsProperty();
+
+	boolean isRelationshipPropertiesEntity();
+
+	/**
+	 * The entity name including any package prefix.
+	 *
+	 * @return must never return {@literal null}.
+	 */
+	String getName();
+
 
 	class NodeDescriptionImpl<T> implements NodeDescription<T> {
 		private final Class<T> type;
@@ -398,12 +411,12 @@ public interface NodeDescription<T> {
 		}
 
 		@Override
-		public Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<PropertyFilter.RelaxedPropertyPath> propertyPredicate) {
+		public Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<RelaxedPropertyPath> propertyPredicate) {
 			return new HashSet<>(relationships);
 		}
 
 		@Override
-		public Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<PropertyFilter.RelaxedPropertyPath> propertyFilter, PropertyFilter.RelaxedPropertyPath path) {
+		public Collection<RelationshipDescription> getRelationshipsInHierarchy(Predicate<RelaxedPropertyPath> propertyFilter, RelaxedPropertyPath path) {
 			return new HashSet<>(relationships);
 		}
 
@@ -428,7 +441,7 @@ public interface NodeDescription<T> {
 		}
 
 		@Override
-		public boolean containsPossibleCircles(Predicate<PropertyFilter.RelaxedPropertyPath> includeField) {
+		public boolean containsPossibleCircles(Predicate<RelaxedPropertyPath> includeField) {
 			return false;
 		}
 
@@ -506,6 +519,22 @@ public interface NodeDescription<T> {
 
 		@Override public void doWithAssociations(Consumer<RelationshipDescription> handler) {
 			relationships.forEach(handler);
+		}
+
+		@Override
+		public Optional<GraphPropertyDescription> getDynamicLabelsProperty() {
+			return getGraphProperties().stream()
+					.filter(GraphPropertyDescription::isDynamicLabels).findFirst();
+		}
+
+		@Override
+		public boolean isRelationshipPropertiesEntity() {
+			return type.isAnnotationPresent(RelationshipProperties.class);
+		}
+
+		@Override
+		public String getName() {
+			return type.getName();
 		}
 
 		@Override

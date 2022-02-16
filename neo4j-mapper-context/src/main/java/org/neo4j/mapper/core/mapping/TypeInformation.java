@@ -1,41 +1,91 @@
 package org.neo4j.mapper.core.mapping;
 
-public class TypeInformation<T> {
+import org.jetbrains.annotations.Nullable;
 
-    public static <T> TypeInformation<T> from(Class<T> clazz) {
-        return null;
+import java.util.Collection;
+import java.util.Map;
+
+public interface TypeInformation<T> {
+
+    static <T> TypeInformation<T> from(Class<T> clazz) {
+        return new TypeInformation<T>() {
+
+            @Override
+            public TypeInformation<T> getRequiredActualType() {
+                return from(clazz);
+            }
+
+            @Override
+            public boolean isCollectionLike() {
+                return Collection.class.isAssignableFrom(clazz);
+            }
+
+            public boolean isMap() {
+                return Map.class.isAssignableFrom(clazz);
+            }
+
+            @Override
+            public Class<T> getType() {
+                return clazz;
+            }
+
+            @Override
+            @Nullable
+            public TypeInformation<?> getComponentType() {
+
+                boolean isCollection = isCollectionLike();
+                boolean isMap = isMap();
+
+                Class<?> componentType = clazz;
+
+                if (isCollection || isMap) {
+                    componentType =  clazz.getTypeParameters()[0].getClass();
+                }
+
+                return from(componentType);
+            }
+
+            @Override
+            public TypeInformation<?> getActualType() {
+                throw new UnsupportedOperationException("check with calling code");
+            }
+
+            @Override
+            public TypeInformation<?> getRequiredComponentType() {
+                TypeInformation<?> componentType = getComponentType();
+                if (componentType == null) {
+                    throw new IllegalStateException("No component type");
+                }
+
+                return componentType;
+            }
+
+            @Override
+            public TypeInformation<?> getRawTypeInformation() {
+                throw new UnsupportedOperationException("check with calling code");
+            }
+
+            @Override
+            public TypeInformation<?> getMapValueType() {
+                return from((Class<?>) clazz.getTypeParameters()[1].getClass());
+            }
+        };
     }
 
-    public TypeInformation<T> getRequiredActualType() {
-        return null;
-    }
+    TypeInformation<T> getRequiredActualType();
 
-    public boolean isCollectionLike() {
-        return false;
-    }
+    boolean isCollectionLike();
 
-    public Class<T> getType() {
-        return null;
-    }
+    Class<T> getType();
 
-    public TypeInformation<?> getComponentType() {
-        return null;
-    }
+    TypeInformation<?> getComponentType();
 
-    public TypeInformation<?> getActualType() {
-        return null;
-    }
+    TypeInformation<?> getActualType();
 
-    public TypeInformation<?> getRequiredComponentType() {
-        return null;
-    }
+    TypeInformation<?> getRequiredComponentType();
 
-    public TypeInformation<?> getRawTypeInformation() {
-        return null;
-    }
+    TypeInformation<?> getRawTypeInformation();
 
-    public TypeInformation<?> getMapValueType() {
-        return null;
-    }
+    TypeInformation<?> getMapValueType();
 
 }

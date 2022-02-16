@@ -36,12 +36,14 @@ import org.neo4j.cypherdsl.core.StatementBuilder.OngoingMatchAndUpdate;
 import org.neo4j.cypherdsl.core.StatementBuilder.OngoingUpdate;
 import org.neo4j.cypherdsl.core.SymbolicName;
 import org.neo4j.cypherdsl.core.renderer.Renderer;
+import org.neo4j.mapper.core.mapping.Constants;
 import org.neo4j.mapper.core.mapping.GraphPropertyDescription;
 import org.neo4j.mapper.core.mapping.IdDescription;
 import org.neo4j.mapper.core.mapping.MappingException;
 import org.neo4j.mapper.core.mapping.NodeDescription;
 import org.neo4j.mapper.core.mapping.PropertyFilter;
 import org.neo4j.mapper.core.mapping.RelationshipDescription;
+import org.neo4j.mapper.core.mapping.RelaxedPropertyPath;
 import org.neo4j.mapper.core.schema.TargetNode;
 import org.neo4j.mapper.core.support.Assert;
 
@@ -517,14 +519,14 @@ public enum CypherGenerator {
 	 * @return An expression to be returned by a Cypher statement
 	 */
 	public Collection<Expression> createReturnStatementForMatch(NodeDescription<?> nodeDescription,
-			Predicate<PropertyFilter.RelaxedPropertyPath> includeField) {
+			Predicate<RelaxedPropertyPath> includeField) {
 
 		List<RelationshipDescription> processedRelationships = new ArrayList<>();
 		if (nodeDescription.containsPossibleCircles(includeField)) {
 			return createGenericReturnStatement();
 		} else {
 			return Collections.singleton(projectPropertiesAndRelationships(
-					PropertyFilter.RelaxedPropertyPath.withRootType(nodeDescription.getUnderlyingClass()),
+					RelaxedPropertyPath.withRootType(nodeDescription.getUnderlyingClass()),
 					nodeDescription,
 					Constants.NAME_OF_TYPED_ROOT_NODE.apply(nodeDescription),
 					includeField,
@@ -541,8 +543,8 @@ public enum CypherGenerator {
 		return returnExpressions;
 	}
 
-	private MapProjection projectPropertiesAndRelationships(PropertyFilter.RelaxedPropertyPath parentPath, NodeDescription<?> nodeDescription, SymbolicName nodeName,
-															Predicate<PropertyFilter.RelaxedPropertyPath> includedProperties, @Nullable RelationshipDescription relationshipDescription, List<RelationshipDescription> processedRelationships) {
+	private MapProjection projectPropertiesAndRelationships(RelaxedPropertyPath parentPath, NodeDescription<?> nodeDescription, SymbolicName nodeName,
+															Predicate<RelaxedPropertyPath> includedProperties, @Nullable RelationshipDescription relationshipDescription, List<RelationshipDescription> processedRelationships) {
 
 		Collection<RelationshipDescription> relationships = nodeDescription.getRelationshipsInHierarchy(includedProperties, parentPath);
 		relationships.removeIf(r -> !includedProperties.test(parentPath.append(r.getFieldName())));
@@ -559,8 +561,8 @@ public enum CypherGenerator {
 	 * this list can also contain two "keys" in a row. The {@link MapProjection} will take care to handle them as
 	 * self-reflecting fields. Example with self-reflection and explicit value: {@code n {.id, name: n.name}}.
 	 */
-	private List<Object> projectNodeProperties(PropertyFilter.RelaxedPropertyPath parentPath, NodeDescription<?> nodeDescription, SymbolicName nodeName,
-											   @Nullable RelationshipDescription relationshipDescription, Predicate<PropertyFilter.RelaxedPropertyPath> includeField) {
+	private List<Object> projectNodeProperties(RelaxedPropertyPath parentPath, NodeDescription<?> nodeDescription, SymbolicName nodeName,
+											   @Nullable RelationshipDescription relationshipDescription, Predicate<RelaxedPropertyPath> includeField) {
 
 		List<Object> nodePropertiesProjection = new ArrayList<>();
 		Node node = anyNode(nodeName);
@@ -573,7 +575,7 @@ public enum CypherGenerator {
 			if (graphProperty.isDynamicLabels() || graphProperty.isComposite()) {
 				continue;
 			}
-			PropertyFilter.RelaxedPropertyPath from;
+			RelaxedPropertyPath from;
 
 			if (relationshipDescription == null) {
 				from = parentPath.append(graphProperty.getFieldName());
@@ -611,8 +613,8 @@ public enum CypherGenerator {
 	/**
 	 * @see CypherGenerator#projectNodeProperties
 	 */
-	private List<Object> generateListsFor(PropertyFilter.RelaxedPropertyPath parentPath, NodeDescription<?> nodeDescription, Collection<RelationshipDescription> relationships, SymbolicName nodeName,
-										  Predicate<PropertyFilter.RelaxedPropertyPath> includedProperties, List<RelationshipDescription> processedRelationships) {
+	private List<Object> generateListsFor(RelaxedPropertyPath parentPath, NodeDescription<?> nodeDescription, Collection<RelationshipDescription> relationships, SymbolicName nodeName,
+										  Predicate<RelaxedPropertyPath> includedProperties, List<RelationshipDescription> processedRelationships) {
 
 		List<Object> mapProjectionLists = new ArrayList<>();
 
@@ -633,8 +635,8 @@ public enum CypherGenerator {
 		return mapProjectionLists;
 	}
 
-	private void generateListFor(PropertyFilter.RelaxedPropertyPath parentPath, NodeDescription<?> nodeDescription, RelationshipDescription relationshipDescription, SymbolicName nodeName,
-								 List<RelationshipDescription> processedRelationships, String fieldName, List<Object> mapProjectionLists, Predicate<PropertyFilter.RelaxedPropertyPath> includedProperties) {
+	private void generateListFor(RelaxedPropertyPath parentPath, NodeDescription<?> nodeDescription, RelationshipDescription relationshipDescription, SymbolicName nodeName,
+								 List<RelationshipDescription> processedRelationships, String fieldName, List<Object> mapProjectionLists, Predicate<RelaxedPropertyPath> includedProperties) {
 
 		String relationshipType = relationshipDescription.getType();
 		String relationshipTargetName = relationshipDescription.generateRelatedNodesCollectionName(nodeDescription);
@@ -649,7 +651,7 @@ public enum CypherGenerator {
 		NodeDescription<?> endNodeDescription = (NodeDescription<?>) relationshipDescription.getTarget();
 
 		processedRelationships.add(relationshipDescription);
-		PropertyFilter.RelaxedPropertyPath newParentPath = parentPath.append(relationshipDescription.getFieldName());
+		RelaxedPropertyPath newParentPath = parentPath.append(relationshipDescription.getFieldName());
 
 		if (relationshipDescription.isDynamic()) {
 			Relationship relationship = relationshipDescription.isOutgoing()

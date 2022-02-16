@@ -122,41 +122,4 @@ public abstract class PropertyFilter {
 		}
 	}
 
-	/**
-	 * A very loose coupling between a dot path and its (possible) owning type.
-	 * This is due to the fact that the original PropertyPath does throw an exception on creation when a property
-	 * is not found on the entity.
-	 * Since we are supporting also querying for base classes with properties coming from the inheriting classes,
-	 * this test on creation is too strict.
-	 */
-	public record RelaxedPropertyPath(String dotPath, Class<?> type) {
-		public static RelaxedPropertyPath withRootType(Class<?> type) {
-			return new RelaxedPropertyPath("", type);
-		}
-
-		public String toDotPath() {
-			return dotPath;
-		}
-
-		public Class<?> getType() {
-			return type;
-		}
-
-		public RelaxedPropertyPath append(String pathPart) {
-			return new RelaxedPropertyPath(appendToDotPath(pathPart), getType());
-		}
-
-		public RelaxedPropertyPath prepend(String pathPart) {
-			return new RelaxedPropertyPath(prependDotPathWith(pathPart), getType());
-		}
-
-		private String appendToDotPath(String pathPart) {
-			return dotPath.isEmpty() ? pathPart : dotPath + "." + pathPart;
-		}
-
-		private String prependDotPathWith(String pathPart) {
-			return dotPath.isEmpty() ? pathPart : pathPart + "." + dotPath;
-		}
-	}
-
 }

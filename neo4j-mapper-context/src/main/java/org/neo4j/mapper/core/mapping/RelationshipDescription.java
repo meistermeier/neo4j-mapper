@@ -42,7 +42,7 @@ public interface RelationshipDescription {
 
 	static RelationshipDescription of(GraphPropertyDescription relationshipProperty) {
 		return new RelationshipDescription() {
-			private Relationship relationshipAnnotation = relationshipProperty.findNeo4jAnnotation(Relationship.class);
+			private Relationship relationshipAnnotation = relationshipProperty.findAnnotation(Relationship.class);
 
 			@Override
 			public String getType() {
